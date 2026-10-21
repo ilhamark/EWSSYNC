@@ -3511,8 +3511,8 @@ End Function
 
 'V2: ekspor daftar faktur dengan posisi kolom template EWS yang tetap.
 Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTarget As Worksheet, ByVal kodeEWS As String, ByVal bulan As Long, ByVal tahun As Long)
-    Dim hs As Long, akhir As Long, r As Long, rt As Long, jumlah As Long
-    Dim batasTotal As Long, kapasitas As Long, nomor As Long, masa As Variant
+    Dim hs As Long, akhir As Long, r As Long, jumlah As Long, i As Long
+    Dim batasTotal As Long, kapasitas As Long, masa As Variant, baris() As Long
     Dim sumber As Object, target As Object
     Dim calcLama As XlCalculation, eventsLama As Boolean, screenLama As Boolean
     On Error GoTo Gagal
@@ -3542,26 +3542,29 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
         batasTotal = batasTotal + jumlah - kapasitas
     End If
     wsTarget.Range(wsTarget.Cells(23, 1), wsTarget.Cells(batasTotal - 1, wsTarget.UsedRange.Column + wsTarget.UsedRange.Columns.Count - 1)).ClearContents
-    rt = 23: nomor = 1
+    ReDim baris(1 To jumlah)
+    i = 0
     For r = hs + 1 To akhir
         masa = wsSumber.Cells(r, CLng(sumber("MASA"))).Value2
         If IsNumeric(masa) Then
             If CLng(masa) = bulan And Len(Trim$(CStr(wsSumber.Cells(r, 1).Value2))) > 0 Then
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "NAMA"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "TIN"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "KODE"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "TIPE"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "NOMOR"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "TANGGAL"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DPP"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DPP_LAIN"
-                TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "PPN"
-                If wsTarget.Name = "N-19-2" Then TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DETAIL"
-                SelKiriAtasMergeV2(wsTarget.Cells(rt, CLng(target("NO")))).Value2 = nomor
-                nomor = nomor + 1: rt = rt + 1
+                i = i + 1
+                baris(i) = r
             End If
         End If
     Next r
+    TerapkanFormatBarisBatchV2 wsTarget, jumlah
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "NAMA"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "TIN"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "KODE"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "TIPE"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "NOMOR"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "TANGGAL"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DPP"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DPP_LAIN"
+    TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "PPN"
+    If wsTarget.Name = "N-19-2" Then TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DETAIL"
+    TulisNomorBatchV2 wsTarget, CLng(target("NO")), jumlah
 Selesai:
     Application.CutCopyMode = False: Application.Calculation = calcLama: Application.EnableEvents = eventsLama: Application.ScreenUpdating = screenLama
     Exit Sub
@@ -3613,6 +3616,41 @@ Private Function SelKiriAtasMergeV2(ByVal sel As Range) As Range
         Set SelKiriAtasMergeV2 = sel
     End If
 End Function
+
+Private Sub TerapkanFormatBarisBatchV2(ByVal ws As Worksheet, ByVal jumlah As Long)
+    Dim lebar As Long
+    If jumlah = 0 Then Exit Sub
+    lebar = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+    ws.Range(ws.Cells(23, 1), ws.Cells(23, lebar)).Copy
+    ws.Range(ws.Cells(23, 1), ws.Cells(22 + jumlah, lebar)).PasteSpecial xlPasteFormats
+    ws.Range(ws.Cells(23, 1), ws.Cells(22 + jumlah, lebar)).WrapText = True
+End Sub
+
+Private Sub TulisNomorBatchV2(ByVal ws As Worksheet, ByVal kolom As Long, ByVal jumlah As Long)
+    Dim nilai() As Variant, i As Long
+    ReDim nilai(1 To jumlah, 1 To 1)
+    For i = 1 To jumlah
+        nilai(i, 1) = i
+    Next i
+    ws.Cells(23, kolom).Resize(jumlah, 1).Value2 = nilai
+End Sub
+
+Private Sub TulisKolomBatchV2(ByVal wsSumber As Worksheet, ByVal wsTarget As Worksheet, ByRef baris() As Long, ByVal jumlah As Long, ByVal sumber As Object, ByVal target As Object, ByVal nama As String)
+    Dim nilai() As Variant, i As Long, kolSumber As Long, kolTarget As Long
+    If Not sumber.Exists(nama) Or Not target.Exists(nama) Then Exit Sub
+    kolSumber = CLng(sumber(nama))
+    kolTarget = CLng(target(nama))
+    ReDim nilai(1 To jumlah, 1 To 1)
+    For i = 1 To jumlah
+        If nama = "TIN" Or nama = "NOMOR" Then
+            nilai(i, 1) = CStr(wsSumber.Cells(baris(i), kolSumber).Value2)
+        Else
+            nilai(i, 1) = wsSumber.Cells(baris(i), kolSumber).Value2
+        End If
+    Next i
+    If nama = "TIN" Or nama = "NOMOR" Then wsTarget.Cells(23, kolTarget).Resize(jumlah, 1).NumberFormat = "@"
+    wsTarget.Cells(23, kolTarget).Resize(jumlah, 1).Value2 = nilai
+End Sub
 
 Private Sub PastikanKolomDetailBarangN19(ByVal ws As Worksheet)
     If LCase$(Trim$(CStr(ws.Cells(20, 59).Value2))) = "detail barang" Then Exit Sub
