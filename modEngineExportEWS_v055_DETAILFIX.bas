@@ -3578,7 +3578,7 @@ Gagal:
 End Sub
 
 Private Sub TerapkanMergeKolomHeaderV2(ByVal ws As Worksheet, ByVal barisAwal As Long, ByVal jumlah As Long)
-    Dim area As Range, r As Long, c1 As Long, c2 As Long
+    Dim area As Range, sel As Range, r As Long, c As Long, c1 As Long, c2 As Long, akhirKolom As Long
     Dim pola As Collection, item As Variant
 
     If jumlah = 0 Then Exit Sub
@@ -3586,13 +3586,18 @@ Private Sub TerapkanMergeKolomHeaderV2(ByVal ws As Worksheet, ByVal barisAwal As
 
     'Baris angka header (1), (2), dan seterusnya memegang lebar
     'setiap kolom data yang sebenarnya pada template EWS.
-    For Each area In ws.MergedCells
-        If area.Row <= 22 And area.Row + area.Rows.Count - 1 >= 22 Then
+    akhirKolom = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
+    For c = ws.UsedRange.Column To akhirKolom
+        Set sel = ws.Cells(22, c)
+        If sel.MergeCells Then
+            Set area = sel.MergeArea
             c1 = area.Column
             c2 = c1 + area.Columns.Count - 1
-            pola.Add Array(c1, c2)
+            On Error Resume Next
+            pola.Add Array(c1, c2), CStr(c1) & ":" & CStr(c2)
+            On Error GoTo 0
         End If
-    Next area
+    Next c
 
     For r = barisAwal To barisAwal + jumlah - 1
         For Each item In pola
