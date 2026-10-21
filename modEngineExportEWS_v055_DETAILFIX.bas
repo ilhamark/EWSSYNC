@@ -3568,12 +3568,41 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "PPN"
     If wsTarget.Name = "N-19-2" Then TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DETAIL"
     TulisNomorBatchV2 wsTarget, CLng(target("NO")), jumlah
+    TerapkanMergeKolomHeaderV2 wsTarget, 23, jumlah
 Selesai:
     Application.CutCopyMode = False: Application.Calculation = calcLama: Application.EnableEvents = eventsLama: Application.ScreenUpdating = screenLama
     Exit Sub
 Gagal:
     MsgBox "Ekspor detail " & kodeEWS & " dihentikan: " & Err.Description, vbExclamation, "EWSSYNC"
     Resume Selesai
+End Sub
+
+Private Sub TerapkanMergeKolomHeaderV2(ByVal ws As Worksheet, ByVal barisAwal As Long, ByVal jumlah As Long)
+    Dim area As Range, r As Long, c1 As Long, c2 As Long
+    Dim pola As Collection, item As Variant
+
+    If jumlah = 0 Then Exit Sub
+    Set pola = New Collection
+
+    'Baris angka header (1), (2), dan seterusnya memegang lebar
+    'setiap kolom data yang sebenarnya pada template EWS.
+    For Each area In ws.MergedCells
+        If area.Row <= 22 And area.Row + area.Rows.Count - 1 >= 22 Then
+            c1 = area.Column
+            c2 = c1 + area.Columns.Count - 1
+            pola.Add Array(c1, c2)
+        End If
+    Next area
+
+    For r = barisAwal To barisAwal + jumlah - 1
+        For Each item In pola
+            c1 = CLng(item(0))
+            c2 = CLng(item(1))
+            If c2 > c1 Then
+                ws.Range(ws.Cells(r, c1), ws.Cells(r, c2)).Merge
+            End If
+        Next item
+    Next r
 End Sub
 
 Private Function KolomTargetDetailPPNV2(ByVal ws As Worksheet) As Object
