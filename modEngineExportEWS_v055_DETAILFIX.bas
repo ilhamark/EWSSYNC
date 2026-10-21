@@ -3569,6 +3569,7 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DPP_LAIN"
     TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "PPN"
     If wsTarget.Name = "N-19-2" Then TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DETAIL"
+    If wsTarget.Name = "N-20-2" Then TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DETAIL"
     TulisNomorBatchV2 wsTarget, CLng(target("NO")), jumlah
     TerapkanMergeKolomHeaderV2 wsTarget, 23, jumlah
 Selesai:
@@ -3619,7 +3620,8 @@ Private Function KolomTargetDetailPPNV2(ByVal ws As Worksheet) As Object
         d("NOMOR") = 24: d("TANGGAL") = 31: d("DPP") = 38: d("PPN") = 45: d("DETAIL") = 59
     Else
         d("KODE") = 24: d("TIPE") = 28: d("NOMOR") = 30: d("TANGGAL") = 35: d("DPP") = 40: d("DPP_LAIN") = 46: d("PPN") = 52
-        If ws.Name = "N-20-2" Then d("DETAIL") = 9
+        'Kolom (20) Nama BKP/JKP pada template N-20-2 dimulai dari CZ.
+        If ws.Name = "N-20-2" Then d("DETAIL") = 104
     End If
     Set KolomTargetDetailPPNV2 = d
 End Function
