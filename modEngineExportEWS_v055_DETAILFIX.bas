@@ -3534,6 +3534,9 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
             End If
         End If
     Next r
+    'Tidak ada faktur untuk masa ini adalah kondisi normal.
+    'Lewati tanpa mengubah template atau menampilkan dialog.
+    If jumlah = 0 Then GoTo Selesai
     batasTotal = CariBarisTotalDetailPPN(wsTarget, 23)
     If batasTotal = 0 Then Err.Raise vbObjectError + 6104, , "Baris total target tidak ditemukan: " & wsTarget.Name
     kapasitas = batasTotal - 23
