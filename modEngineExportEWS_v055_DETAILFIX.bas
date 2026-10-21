@@ -3547,8 +3547,6 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
         masa = wsSumber.Cells(r, CLng(sumber("MASA"))).Value2
         If IsNumeric(masa) Then
             If CLng(masa) = bulan And Len(Trim$(CStr(wsSumber.Cells(r, 1).Value2))) > 0 Then
-                wsTarget.Rows(23).Copy
-                wsTarget.Rows(rt).PasteSpecial xlPasteFormats
                 TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "NAMA"
                 TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "TIN"
                 TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "KODE"
@@ -3558,9 +3556,8 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
                 TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DPP"
                 TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DPP_LAIN"
                 TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "PPN"
-                If wsTarget.Name = "N-20-2" Then TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DETAIL"
                 If wsTarget.Name = "N-19-2" Then TulisFieldDetailV2 wsSumber, wsTarget, r, rt, sumber, target, "DETAIL"
-                wsTarget.Cells(rt, CLng(target("NO"))).Value2 = nomor
+                SelKiriAtasMergeV2(wsTarget.Cells(rt, CLng(target("NO")))).Value2 = nomor
                 nomor = nomor + 1: rt = rt + 1
             End If
         End If
@@ -3586,11 +3583,36 @@ Private Function KolomTargetDetailPPNV2(ByVal ws As Worksheet) As Object
 End Function
 
 Private Sub TulisFieldDetailV2(ByVal wsSumber As Worksheet, ByVal wsTarget As Worksheet, ByVal rs As Long, ByVal rt As Long, ByVal sumber As Object, ByVal target As Object, ByVal nama As String)
+    Dim tujuan As Range
+
     If sumber.Exists(nama) And target.Exists(nama) Then
-        wsTarget.Cells(rt, CLng(target(nama))).Value2 = wsSumber.Cells(rs, CLng(sumber(nama))).Value2
-        wsTarget.Cells(rt, CLng(target(nama))).NumberFormat = wsSumber.Cells(rs, CLng(sumber(nama))).NumberFormat
+        Set tujuan = SelKiriAtasMergeV2(wsTarget.Cells(rt, CLng(target(nama))))
+        With tujuan
+            If nama = "TIN" Or nama = "NOMOR" Then
+                .NumberFormat = "@"
+                .Value2 = CStr(wsSumber.Cells(rs, CLng(sumber(nama))).Value2)
+            Else
+                .Value2 = wsSumber.Cells(rs, CLng(sumber(nama))).Value2
+            End If
+            .NumberFormat = wsSumber.Cells(rs, CLng(sumber(nama))).NumberFormat
+            If nama = "TIN" Or nama = "NOMOR" Then .NumberFormat = "@"
+            .Font.Name = wsSumber.Cells(rs, CLng(sumber(nama))).Font.Name
+            .Font.Size = wsSumber.Cells(rs, CLng(sumber(nama))).Font.Size
+            .Font.Bold = wsSumber.Cells(rs, CLng(sumber(nama))).Font.Bold
+            .HorizontalAlignment = wsSumber.Cells(rs, CLng(sumber(nama))).HorizontalAlignment
+            .VerticalAlignment = wsSumber.Cells(rs, CLng(sumber(nama))).VerticalAlignment
+            .WrapText = True
+        End With
     End If
 End Sub
+
+Private Function SelKiriAtasMergeV2(ByVal sel As Range) As Range
+    If sel.MergeCells Then
+        Set SelKiriAtasMergeV2 = sel.MergeArea.Cells(1, 1)
+    Else
+        Set SelKiriAtasMergeV2 = sel
+    End If
+End Function
 
 Private Sub PastikanKolomDetailBarangN19(ByVal ws As Worksheet)
     If LCase$(Trim$(CStr(ws.Cells(20, 59).Value2))) = "detail barang" Then Exit Sub
