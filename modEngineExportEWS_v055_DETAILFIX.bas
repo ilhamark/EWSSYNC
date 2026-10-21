@@ -3519,9 +3519,11 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     calcLama = Application.Calculation: eventsLama = Application.EnableEvents: screenLama = Application.ScreenUpdating
     Application.Calculation = xlCalculationManual: Application.EnableEvents = False: Application.ScreenUpdating = False
     hs = CariHeaderSumberDetailPPNV2(wsSumber)
-    If hs = 0 Then Err.Raise vbObjectError + 6101, , "Header sumber tidak ditemukan: " & wsSumber.Name
+    'Kode O-Q dan beberapa template PPN tidak mempunyai daftar faktur.
+    'Lewati tanpa dialog agar ekspor KKP lain tetap berjalan.
+    If hs = 0 Then GoTo Selesai
     Set sumber = PetaKolomDetailPPN(wsSumber, hs)
-    If Not sumber.Exists("MASA") Then Err.Raise vbObjectError + 6102, , "Kolom Masa tidak ditemukan: " & wsSumber.Name
+    If Not sumber.Exists("MASA") Then GoTo Selesai
     Set target = KolomTargetDetailPPNV2(wsTarget)
     If Not target.Exists("NO") Then Err.Raise vbObjectError + 6103, , "Template target tidak dikenali: " & wsTarget.Name
     If wsTarget.Name = "N-19-2" Then PastikanKolomDetailBarangN19 wsTarget
