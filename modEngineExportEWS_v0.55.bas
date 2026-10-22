@@ -36,8 +36,8 @@ Private Const TEKS_TEKNIK_LANGSUNG As String = _
 Private Const BATAS_KALKULASI_DETIK As Double = 120#
 'Waktu maksimum tanpa penanda kemajuan dan waktu maksimum satu file EWS.
 'Ubah nilai ini bila template EWS yang sah memerlukan waktu lebih lama.
-Private Const BATAS_DIAM_EKSPOR_DETIK As Double = 300#
-Private Const BATAS_TOTAL_FILE_EKSPOR_DETIK As Double = 1800#
+Private Const BATAS_DIAM_EKSPOR_DETIK As Double = 180#
+Private Const BATAS_TOTAL_FILE_EKSPOR_DETIK As Double = 240#
 
 Private mPengawasEksporAktif As Boolean
 Private mMulaiFileEkspor As Double
