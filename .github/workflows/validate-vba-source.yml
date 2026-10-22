@@ -1,0 +1,31 @@
+name: Validasi Source VBA
+
+on:
+  push:
+    branches:
+      - master
+      - 'release/**'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validasi struktur VBA
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil source
+        uses: actions/checkout@v4
+
+      - name: Siapkan Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Periksa source VBA
+        run: python tools/validate_vba_source.py

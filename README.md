@@ -67,3 +67,4 @@ Lihat [docs/MODULES.md](docs/MODULES.md) untuk daftar fungsi, dependensi, dan pa
 - Simpan setiap perubahan VBA sebagai `.bas` atau `.frm`; jangan menjadikan file `.xlsm` sebagai satu-satunya sumber kode.
 - Setelah perubahan, jalankan **Debug → Compile VBAProject** dan uji pada salinan workbook.
 - Untuk perubahan ekspor PPN, verifikasi jumlah baris, nomor urut, kolom faktur, detail barang, total DPP/PPN, dan merge cell pada sheet EWS tujuan.
+- GitHub Actions menjalankan validasi struktur source pada setiap push dan pull request. Validasi ini memeriksa versi nama file, `Attribute VB_Name`, `Option Explicit`, pasangan `.frm`–`.frx`, serta katalog modul; pengujian macro tetap dilakukan di Excel Desktop.
