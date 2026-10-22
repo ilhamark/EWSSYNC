@@ -4,7 +4,7 @@
 
 | File | Nama modul VBA | Peran | Titik masuk utama |
 | --- | --- | --- | --- |
-| `modEngineExportEWS_v0.55.bas` | `modEngineExportEWS` | Mesin ekspor data KKP ke template EWS, termasuk rincian faktur PPN dan log ekspor. | `EksporTerpilihEWS` |
+| `modEngineExportEWS_v0.55.bas` | `modEngineExportEWS` | Mesin ekspor data KKP ke template EWS, rincian faktur PPN, log, rollback, dan pengawas waktu proses. | `EksporTerpilihEWS` |
 | `modKatalogExportEWS_v0.55.bas` | `modKatalogExportEWS` | Mengisi form ekspor: jenis pajak, kelompok KKP, file target, dan validasi pilihan. | `BukaFormExportEWS` |
 | `modPetaKKP_v0.55.bas` | `modPetaKKP` | Konstanta jenis pajak, normalisasi kode EWS, dan pemetaan kode EWS ke sheet lokal. | `NormalisasiKodeKKPEWS`, `DapatkanSheetLokalKKP` |
 | `modImportEWS_v0.55.bas` | `modImportEWS` | Impor file EWS untuk kelompok pajak dan pencatatan log impor. | `TampilkanFormImportEWS` |

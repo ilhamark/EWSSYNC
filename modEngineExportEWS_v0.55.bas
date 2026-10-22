@@ -32,7 +32,17 @@ Private Const NAMA_SHEET_LOG_EXPORT As String = _
 Private Const TEKS_TEKNIK_LANGSUNG As String = _
     "PEMERIKSAANLANGSUNGTERHADAPBUKTI"
 
-Private Const BATAS_TUNGGU_DETIK As Double = 3
+'Waktu maksimum menunggu kalkulasi Excel sampai dianggap tidak merespons.
+Private Const BATAS_KALKULASI_DETIK As Double = 120#
+'Waktu maksimum tanpa penanda kemajuan dan waktu maksimum satu file EWS.
+'Ubah nilai ini bila template EWS yang sah memerlukan waktu lebih lama.
+Private Const BATAS_DIAM_EKSPOR_DETIK As Double = 300#
+Private Const BATAS_TOTAL_FILE_EKSPOR_DETIK As Double = 1800#
+
+Private mPengawasEksporAktif As Boolean
+Private mMulaiFileEkspor As Double
+Private mKemajuanTerakhirEkspor As Double
+Private mFileDiawasiEkspor As String
 
 '---------------------------------------------------------------------
 ' TITIK MASUK DARI frmExportEWS
@@ -399,7 +409,10 @@ Private Function ProsesSatuFileExportSelektif( _
 
     On Error GoTo Gagal
 
+    MulaiPengawasWaktuExport filePath
+
     tahapFile = "Memeriksa file yang sudah terbuka"
+    TandaiKemajuanWaktuExport tahapFile
     If WorkbookTerbukaUntukExport(filePath) Then
 
         Err.Raise _
@@ -415,6 +428,7 @@ Private Function ProsesSatuFileExportSelektif( _
         msoAutomationSecurityForceDisable
 
     tahapFile = "Membuka workbook EWS"
+    TandaiKemajuanWaktuExport tahapFile
     If taxKey = TAXKEY_PPH42 Then
         'TOT10 menampilkan peringatan circular reference walau macro dimatikan.
         Application.SendKeys "{ENTER}", False
@@ -431,6 +445,7 @@ Private Function ProsesSatuFileExportSelektif( _
     securityDiubah = False
 
     tahapFile = "Memeriksa akses workbook"
+    TandaiKemajuanWaktuExport tahapFile
     If wbEWS.ReadOnly Then
 
         Err.Raise _
@@ -453,25 +468,31 @@ Private Function ProsesSatuFileExportSelektif( _
         NAMA_SHEET_MAIN_EWS_ENGINE)
 
     tahapFile = "Membaca identitas WP"
+    TandaiKemajuanWaktuExport tahapFile
     namaWP = Trim$(CStr(wsMain.Range("AG7").Value2))
 
     tahapFile = "Kalkulasi workbook EWS"
-    TungguPerhitunganEWS wbEWS
+    TandaiKemajuanWaktuExport tahapFile
+    TungguPerhitunganEWS wbEWS, tahapFile
 
     If taxKey = TAXKEY_PPH21F Then
         tahapFile = "Kalkulasi KKP lokal PPh21 Final"
+        TandaiKemajuanWaktuExport tahapFile
         HitungUlangKKPLokal TAXKEY_PPH21F
         TungguKalkulasiPPh23Export filePath, tahapFile
     ElseIf taxKey = TAXKEY_PPH23 Then
         tahapFile = "Kalkulasi KKP lokal PPh23"
+        TandaiKemajuanWaktuExport tahapFile
         HitungUlangKKPLokal TAXKEY_PPH23
         TungguKalkulasiPPh23Export filePath, tahapFile
     ElseIf taxKey = TAXKEY_PPH26 Then
         tahapFile = "Kalkulasi KKP lokal PPh26"
+        TandaiKemajuanWaktuExport tahapFile
         HitungUlangKKPLokal TAXKEY_PPH26
         TungguKalkulasiPPh23Export filePath, tahapFile
     ElseIf taxKey = TAXKEY_PPH42 Then
         tahapFile = "Kalkulasi KKP lokal PPh4(2)"
+        TandaiKemajuanWaktuExport tahapFile
         HitungUlangKKPLokal TAXKEY_PPH42
         TungguKalkulasiPPh23Export filePath, tahapFile
     End If
@@ -481,6 +502,7 @@ Private Function ProsesSatuFileExportSelektif( _
     For Each kodeKKP In daftarKKP
 
         tahapFile = "Mapping KKP " & CStr(kodeKKP)
+        TandaiKemajuanWaktuExport tahapFile
         TambahRencanaKKPExport _
             wbEWS, _
             CStr(kodeKKP), _
@@ -500,6 +522,7 @@ Private Function ProsesSatuFileExportSelektif( _
     End If
 
     tahapFile = "Validasi target sebelum penulisan"
+    TandaiKemajuanWaktuExport tahapFile
     If taxKey = TAXKEY_PPH21F Then ValidasiRencanaPPh21FExport wbEWS, rencana
     If taxKey = TAXKEY_PPH23 Then ValidasiRencanaPPh23Export wbEWS, rencana
     If taxKey = TAXKEY_PPH26 Then ValidasiRencanaPPh26Export wbEWS, rencana
@@ -508,6 +531,8 @@ Private Function ProsesSatuFileExportSelektif( _
     tahapFile = "Mencadangkan target"
     'Simpan formula/nilai lama untuk rollback selama workbook masih terbuka.
     For Each item In rencana
+
+        TandaiKemajuanWaktuExport tahapFile
 
         Set target = wbEWS.Worksheets( _
             CStr(item(0))).Range(CStr(item(1)))
@@ -550,6 +575,7 @@ Private Function ProsesSatuFileExportSelektif( _
         End If
 
         tahapFile = "Menulis " & CStr(item(0)) & "!" & CStr(item(1))
+        TandaiKemajuanWaktuExport tahapFile
         If Left$(UCase$(CStr(item(5))), 4) = "TEKS" Then
             target.Value2 = CStr(item(2))
         Else
@@ -563,16 +589,19 @@ Private Function ProsesSatuFileExportSelektif( _
 
     If UCase$(Trim$(taxKey)) = TAXKEY_PPN_DN Then
         tahapFile = "Mengekspor daftar faktur PPN"
+        TandaiKemajuanWaktuExport tahapFile
         EksporDaftarFakturPPNKeEWS wbEWS, daftarKKP, bulan, tahun
     End If
 
     If perbaruiCFMWP Then
         tahapFile = "Memperbarui CFM WP dari KKP Lokal"
+        TandaiKemajuanWaktuExport tahapFile
         TerapkanCFMWP054 wbEWS, taxKey, bulan, daftarKKP, jumlahNilai, pesanError
     End If
 
     tahapFile = "Kalkulasi workbook EWS"
-    TungguPerhitunganEWS wbEWS
+    TandaiKemajuanWaktuExport tahapFile
+    TungguPerhitunganEWS wbEWS, tahapFile
 
     If taxKey = TAXKEY_PPH21F Then
         TungguKalkulasiPPh23Export filePath, tahapFile
@@ -594,12 +623,14 @@ Private Function ProsesSatuFileExportSelektif( _
         VerifikasiHasilPPh23Export wbEWS, rencana
     End If
     tahapFile = "Menyimpan workbook EWS"
+    TandaiKemajuanWaktuExport tahapFile
     wbEWS.Save
     sudahDisimpanKeDisk = True
 
     If taxKey = TAXKEY_PPH21F Or _
        taxKey = TAXKEY_PPH26 Or taxKey = TAXKEY_PPH42 Then
         tahapFile = "Menutup EWS untuk verifikasi disk " & taxKey
+        TandaiKemajuanWaktuExport tahapFile
         wbEWS.Close SaveChanges:=False
         Set wbEWS = Nothing
 
@@ -609,6 +640,7 @@ Private Function ProsesSatuFileExportSelektif( _
             msoAutomationSecurityForceDisable
 
         tahapFile = "Membuka ulang EWS untuk verifikasi disk " & taxKey
+        TandaiKemajuanWaktuExport tahapFile
         If taxKey = TAXKEY_PPH42 Then
             Application.SendKeys "{ENTER}", False
             DoEvents
@@ -624,7 +656,8 @@ Private Function ProsesSatuFileExportSelektif( _
         securityDiubah = False
 
         tahapFile = "Verifikasi nilai bukti dan dropdown dari disk " & taxKey
-        If taxKey = TAXKEY_PPH21F Then TungguPerhitunganEWS wbEWS
+        TandaiKemajuanWaktuExport tahapFile
+        If taxKey = TAXKEY_PPH21F Then TungguPerhitunganEWS wbEWS, tahapFile
         VerifikasiHasilPPh23Export wbEWS, rencana
         If taxKey = TAXKEY_PPH21F Then _
             VerifikasiDetailPPh21FExport wbEWS, bulan, tahun, rencana
@@ -653,6 +686,8 @@ Keluar:
     End If
 
     On Error GoTo 0
+
+    AkhiriPengawasWaktuExport
 
     ProsesSatuFileExportSelektif = berhasil
     Exit Function
@@ -1304,6 +1339,7 @@ Private Sub EksporDaftarFakturPPNKeEWS( _
 
     For Each kodeKKP In daftarKKP
         kodeEWS = NormalisasiKodeKKPEWS(CStr(kodeKKP))
+        TandaiKemajuanWaktuExport "Memproses rincian faktur " & kodeEWS
         If Not TargetPPNExportDilewati(kodeEWS) Then
             Set wsSumber = SheetSumberDetailPPNExport(kodeEWS)
             If Not wsSumber Is Nothing Then
@@ -2401,11 +2437,12 @@ Private Function TaxKeyDariKodeJenisEngineExport( _
 
 End Function
 
-Private Sub TungguPerhitunganEWS(ByVal wb As Workbook)
+Private Sub TungguPerhitunganEWS( _
+    ByVal wb As Workbook, ByVal tahap As String)
 
-    Dim mulai As Date
+    Dim mulai As Double
 
-    mulai = Now
+    mulai = Timer
 
     'Workbook tidak memiliki metode Calculate yang konsisten pada
     'seluruh versi Excel. Gunakan Application.Calculate agar tidak
@@ -2418,10 +2455,79 @@ Private Sub TungguPerhitunganEWS(ByVal wb As Workbook)
 
         If Application.CalculationState = xlDone Then Exit Do
 
-        If DateDiff("s", mulai, Now) >= _
-            BATAS_TUNGGU_DETIK Then Exit Do
+        PeriksaBatasWaktuExport tahap
+
+        If DetikSejakExport(mulai) >= BATAS_KALKULASI_DETIK Then
+            Err.Raise vbObjectError + 5652, "EWSSYNC Timeout", _
+                "Kalkulasi Excel tidak selesai setelah " & _
+                CStr(BATAS_KALKULASI_DETIK) & " detik."
+        End If
 
     Loop
+
+End Sub
+
+'Pengawas ini bersifat kooperatif: pemeriksaan dilakukan pada batas tahap,
+'saat membaca batch, dan ketika menerapkan merge. VBA tidak dapat menyela
+'perintah Excel tunggal yang sedang menggantung, misalnya Workbooks.Open.
+Private Sub MulaiPengawasWaktuExport(ByVal filePath As String)
+
+    mPengawasEksporAktif = True
+    mMulaiFileEkspor = Timer
+    mKemajuanTerakhirEkspor = mMulaiFileEkspor
+    mFileDiawasiEkspor = filePath
+
+End Sub
+
+Private Sub TandaiKemajuanWaktuExport(ByVal tahap As String)
+
+    PeriksaBatasWaktuExport tahap
+    mKemajuanTerakhirEkspor = Timer
+
+End Sub
+
+Private Sub PeriksaBatasWaktuExport(ByVal tahap As String)
+
+    Dim totalDetik As Double
+    Dim diamDetik As Double
+
+    If Not mPengawasEksporAktif Then Exit Sub
+
+    totalDetik = DetikSejakExport(mMulaiFileEkspor)
+    diamDetik = DetikSejakExport(mKemajuanTerakhirEkspor)
+
+    If totalDetik >= BATAS_TOTAL_FILE_EKSPOR_DETIK Then
+        Err.Raise vbObjectError + 5653, "EWSSYNC Timeout", _
+            "Batas waktu total ekspor file (" & _
+            CStr(BATAS_TOTAL_FILE_EKSPOR_DETIK) & _
+            " detik) terlampaui pada file " & _
+            Dir$(mFileDiawasiEkspor) & "; tahap: " & tahap
+    End If
+
+    If diamDetik >= BATAS_DIAM_EKSPOR_DETIK Then
+        Err.Raise vbObjectError + 5654, "EWSSYNC Timeout", _
+            "Tidak ada kemajuan selama " & _
+            CStr(BATAS_DIAM_EKSPOR_DETIK) & _
+            " detik pada file " & Dir$(mFileDiawasiEkspor) & _
+            "; tahap: " & tahap
+    End If
+
+End Sub
+
+Private Function DetikSejakExport(ByVal mulai As Double) As Double
+
+    DetikSejakExport = Timer - mulai
+    If DetikSejakExport < 0 Then _
+        DetikSejakExport = DetikSejakExport + 86400#
+
+End Function
+
+Private Sub AkhiriPengawasWaktuExport()
+
+    mPengawasEksporAktif = False
+    mMulaiFileEkspor = 0
+    mKemajuanTerakhirEkspor = 0
+    mFileDiawasiEkspor = vbNullString
 
 End Sub
 
@@ -3469,8 +3575,10 @@ Private Sub TungguKalkulasiPPh23Export(ByVal filePath As String, ByVal tahap As 
             Case xlCalculating
                 durasi = Timer - mulai
                 If durasi < 0 Then durasi = durasi + 86400#
-                If durasi >= 30# Then Err.Raise vbObjectError + 5650, , _
-                    "Excel masih aktif menghitung (xlCalculating) setelah 30 detik; " & _
+                PeriksaBatasWaktuExport tahap
+                If durasi >= BATAS_KALKULASI_DETIK Then Err.Raise vbObjectError + 5650, , _
+                    "Excel masih aktif menghitung (xlCalculating) setelah " & _
+                    CStr(BATAS_KALKULASI_DETIK) & " detik; " & _
                     "tahap: " & tahap
             Case Else
                 Err.Raise vbObjectError + 5651, , _
@@ -3515,6 +3623,7 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     Dim batasTotal As Long, kapasitas As Long, masa As Variant, baris() As Long
     Dim sumber As Object, target As Object
     Dim calcLama As XlCalculation, eventsLama As Boolean, screenLama As Boolean
+    Dim nomorError As Long, sumberError As String, pesanError As String
     On Error GoTo Gagal
     calcLama = Application.Calculation: eventsLama = Application.EnableEvents: screenLama = Application.ScreenUpdating
     Application.Calculation = xlCalculationManual: Application.EnableEvents = False: Application.ScreenUpdating = False
@@ -3529,6 +3638,8 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     If wsTarget.Name = "N-19-2" Then PastikanKolomDetailBarangN19 wsTarget
     akhir = BarisTerakhirIsiDetailPPN(wsSumber)
     For r = hs + 1 To akhir
+        If r Mod 250 = 0 Then _
+            TandaiKemajuanWaktuExport "Menghitung faktur " & kodeEWS
         masa = wsSumber.Cells(r, CLng(sumber("MASA"))).Value2
         If IsNumeric(masa) Then
             If CLng(masa) = bulan And Len(Trim$(CStr(wsSumber.Cells(r, 1).Value2))) > 0 Then
@@ -3543,13 +3654,17 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     If batasTotal = 0 Then Err.Raise vbObjectError + 6104, , "Baris total target tidak ditemukan: " & wsTarget.Name
     kapasitas = batasTotal - 23
     If jumlah > kapasitas Then
+        TandaiKemajuanWaktuExport "Menambah baris faktur " & kodeEWS
         wsTarget.Rows(batasTotal).Resize(jumlah - kapasitas).Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
         batasTotal = batasTotal + jumlah - kapasitas
     End If
+    TandaiKemajuanWaktuExport "Membersihkan faktur lama " & kodeEWS
     wsTarget.Range(wsTarget.Cells(23, 1), wsTarget.Cells(batasTotal - 1, wsTarget.UsedRange.Column + wsTarget.UsedRange.Columns.Count - 1)).ClearContents
     ReDim baris(1 To jumlah)
     i = 0
     For r = hs + 1 To akhir
+        If r Mod 250 = 0 Then _
+            TandaiKemajuanWaktuExport "Membaca faktur " & kodeEWS
         masa = wsSumber.Cells(r, CLng(sumber("MASA"))).Value2
         If IsNumeric(masa) Then
             If CLng(masa) = bulan And Len(Trim$(CStr(wsSumber.Cells(r, 1).Value2))) > 0 Then
@@ -3558,6 +3673,7 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
             End If
         End If
     Next r
+    TandaiKemajuanWaktuExport "Menulis faktur " & kodeEWS
     TerapkanFormatBarisBatchV2 wsTarget, jumlah
     TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "NAMA"
     TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "TIN"
@@ -3571,13 +3687,19 @@ Private Sub TulisDetailFakturPPNKeEWSV2(ByVal wsSumber As Worksheet, ByVal wsTar
     If wsTarget.Name = "N-19-2" Then TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DETAIL"
     If wsTarget.Name = "N-20-2" Then TulisKolomBatchV2 wsSumber, wsTarget, baris, jumlah, sumber, target, "DETAIL"
     TulisNomorBatchV2 wsTarget, CLng(target("NO")), jumlah
+    TandaiKemajuanWaktuExport "Menerapkan merge faktur " & kodeEWS
     TerapkanMergeKolomHeaderV2 wsTarget, 23, jumlah
 Selesai:
     Application.CutCopyMode = False: Application.Calculation = calcLama: Application.EnableEvents = eventsLama: Application.ScreenUpdating = screenLama
     Exit Sub
 Gagal:
-    MsgBox "Ekspor detail " & kodeEWS & " dihentikan: " & Err.Description, vbExclamation, "EWSSYNC"
-    Resume Selesai
+    nomorError = Err.Number
+    sumberError = Err.Source
+    pesanError = Err.Description
+    On Error Resume Next
+    Application.CutCopyMode = False: Application.Calculation = calcLama: Application.EnableEvents = eventsLama: Application.ScreenUpdating = screenLama
+    On Error GoTo 0
+    Err.Raise nomorError, sumberError, "Ekspor detail " & kodeEWS & ": " & pesanError
 End Sub
 
 Private Sub TerapkanMergeKolomHeaderV2(ByVal ws As Worksheet, ByVal barisAwal As Long, ByVal jumlah As Long)
@@ -3603,6 +3725,8 @@ Private Sub TerapkanMergeKolomHeaderV2(ByVal ws As Worksheet, ByVal barisAwal As
     Next c
 
     For r = barisAwal To barisAwal + jumlah - 1
+        If r Mod 100 = 0 Then _
+            TandaiKemajuanWaktuExport "Menerapkan merge baris " & CStr(r)
         For Each item In pola
             c1 = CLng(item(0))
             c2 = CLng(item(1))

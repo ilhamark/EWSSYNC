@@ -16,6 +16,7 @@ Source code VBA untuk workbook **EWSSYNC**. Workbook ini membantu tim pemeriksaa
 | Ekspor ke EWS | Memilih jenis pajak, kelompok KKP, KKP, masa, dan file EWS tujuan melalui form ekspor. File tujuan divalidasi sebelum penulisan. |
 | Ekspor rincian faktur PPN | Menulis faktur untuk masa yang dipilih ke N-X-2, mengosongkan data lama, memberi nomor urut mulai dari 1, memasukkan detail barang bila tersedia, dan menyesuaikan merge cell sesuai pola header template EWS. |
 | Ekspor batch | Menghitung kebutuhan baris terlebih dahulu, menyisipkan baris sekali, lalu menulis data per kolom agar ekspor banyak faktur lebih cepat dan tidak menimpa total. |
+| Pengawas waktu ekspor | Menghentikan transaksi file yang tidak menunjukkan kemajuan selama 5 menit, kalkulasi yang tidak selesai dalam 2 menit, atau keseluruhan ekspor satu file yang melampaui 30 menit. |
 | Pencadangan dan rollback | Menyimpan nilai target sebelum ekspor sehingga perubahan pada file EWS dapat dibatalkan bila proses gagal sebelum file disimpan. |
 | Log proses | Menyimpan catatan impor dan ekspor agar hasil, peringatan, dan kegagalan dapat ditelusuri. |
 
@@ -60,6 +61,7 @@ Lihat [docs/MODULES.md](docs/MODULES.md) untuk daftar fungsi, dependensi, dan pa
 - Jalankan ekspor pada salinan template EWS, terutama saat menguji perubahan kode.
 - Uji satu masa pajak terlebih dahulu sebelum mengekspor seluruh masa.
 - Saat proses besar berjalan, Excel dapat memakai kalkulasi manual agar lebih cepat. Jika muncul pemberitahuan **stale values**, tekan `F9` atau **Calculate Now** sebelum menilai hasil.
+- Batas waktu ekspor dapat disesuaikan pada konstanta `BATAS_KALKULASI_DETIK`, `BATAS_DIAM_EKSPOR_DETIK`, dan `BATAS_TOTAL_FILE_EKSPOR_DETIK` di `modEngineExportEWS`.
 - Jangan mengimpor dua modul dengan `Attribute VB_Name` yang sama.
 
 ## Pengembangan
